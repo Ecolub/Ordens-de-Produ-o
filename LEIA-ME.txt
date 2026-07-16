@@ -1,0 +1,147 @@
+>>> VERSÃO EXTERNA (nuvem) <<<
+Use esta pasta pra publicar na nuvem (Render), pra acessar de casa ou
+de qualquer lugar, sem precisar de VPN. Veja a seção "COLOCAR NA
+NUVEM" mais abaixo pro passo a passo completo.
+
+FILA DE ORDENS DE PRODUÇÃO - Como instalar
+============================================
+
+O QUE É
+-------
+Um pequeno servidor que roda numa pasta comum, sem precisar do Claude.
+Você acessa pelo navegador (Chrome, Edge) do seu notebook em casa (via
+rede/VPN da empresa) e a produção acessa do tablet, os dois olhando a
+mesma fila de ordens.
+
+ONDE INSTALAR
+--------------
+Coloque esta pasta inteira em UM computador que fique ligado o dia
+todo e acessível pela rede da empresa (pode ser o próprio servidor que
+roda o Datasul, um computador da produção, ou qualquer PC/servidor que
+o TI autorizar). É só nessa máquina que o programa precisa rodar.
+
+PRÉ-REQUISITO (só uma vez)
+---------------------------
+Instalar o Node.js nessa máquina: https://nodejs.org (baixe a versão
+"LTS" e instale normalmente, clicando "Avançar" até o fim).
+
+COMO RODAR (no dia a dia, depois de instalado)
+-------------------------------------------------
+Dentro da pasta tem um arquivo "iniciar.bat". Dois cliques nele e
+pronto: ele liga o servidor (numa janela preta separada, que não pode
+ser fechada) e já abre o navegador sozinho em http://localhost:3000.
+
+IMPORTANTE: nunca abra o arquivo "public\index.html" diretamente
+(dois cliques nele). Isso abre a página "solta", sem o servidor
+ligado por trás, e nada funciona (enviar ordem, gerar, nada). Sempre
+use o "iniciar.bat".
+
+DICA - atalho na área de trabalho
+------------------------------------
+Pra não precisar nem abrir a pasta: clique com o botão direito no
+"iniciar.bat" e escolha "Enviar para" > "Área de trabalho (criar
+atalho)". Assim fica um ícone na área de trabalho pra ligar tudo com
+um clique.
+
+COMO RODAR NA MÃO (primeira vez / referência)
+------------------------------------------------
+1. Abra o Prompt de Comando (cmd) ou PowerShell nessa máquina.
+2. Entre na pasta do programa, por exemplo:
+     cd /d C:\FilaDeOrdens\ordem-producao
+3. Na primeira vez, instale as dependências:
+     npm install
+4. Inicie o servidor:
+     npm start
+5. Vai aparecer uma mensagem tipo:
+     Fila de ordens rodando em http://localhost:3000
+     Acesse de outros aparelhos usando o IP desta máquina, ex: http://192.168.x.x:3000
+
+DEIXAR LIGANDO SOZINHO QUANDO O PC LIGA (opcional)
+-----------------------------------------------------
+Se quiser que o servidor suba automaticamente sempre que o
+computador ligar, sem precisar clicar em nada:
+1. Aperta Windows + R, digita "shell:startup" e aperta Enter — abre
+   uma pasta.
+2. Copia o arquivo "iniciar.bat" pra dentro dessa pasta (ou cria um
+   atalho dele lá).
+Assim, toda vez que o Windows ligar, o servidor sobe sozinho (a
+janela preta vai aparecer minimizada ao fundo).
+
+
+COLOCAR NA NUVEM (pra acessar sem VPN, de qualquer lugar)
+============================================================
+Isso é opcional e substitui o "rodar no computador da empresa" —
+em vez disso, o programa fica hospedado na internet, e tanto você
+quanto o tablet acessam por um link fixo, de qualquer rede.
+
+PASSO 1 - Criar conta no GitHub (gratuito, guarda os arquivos)
+-----------------------------------------------------------------
+1. Acesse github.com e crie uma conta gratuita.
+2. Clique em "New" (novo repositório). Dê um nome, ex:
+   "ordem-producao". Deixe como "Public" ou "Private", tanto faz.
+   Não marque nenhuma opção extra. Clique em "Create repository".
+3. Na página do repositório, clique em "uploading an existing file"
+   (ou "Add file" > "Upload files").
+4. Arraste TODOS os arquivos desta pasta (menos a pasta
+   node_modules, se existir) pra dentro da página do navegador.
+5. Clique em "Commit changes" pra confirmar o envio.
+
+PASSO 2 - Criar conta no Render (gratuito, hospeda o programa)
+-------------------------------------------------------------------
+1. Acesse render.com e crie uma conta (pode entrar direto com a
+   conta do GitHub, é mais rápido).
+2. Clique em "New" > "Web Service".
+3. Escolha o repositório "ordem-producao" que você criou no GitHub
+   (o Render vai pedir autorização pra enxergar seus repositórios).
+4. Nos campos de configuração:
+   - Build Command: npm install
+   - Start Command: npm start
+5. Em "Environment Variables", adicione uma variável:
+   - Key: SENHA_ACESSO
+   - Value: (escolha uma senha simples, ex: ecolub2026)
+6. Clique em "Create Web Service". Espera uns minutos enquanto ele
+   instala e liga.
+7. Quando terminar, o Render mostra um link fixo, tipo:
+   https://ordem-producao-xxxx.onrender.com
+   Esse é o endereço que você e o tablet vão usar — de qualquer
+   rede, sem VPN. Ao abrir, vai pedir usuário (deixe em branco) e a
+   senha que você configurou.
+
+IMPORTANTE - sobre os dados na nuvem
+---------------------------------------
+No plano gratuito do Render, o arquivo "orders.json" (onde ficam as
+ordens salvas) pode ser apagado se o servidor reiniciar sozinho
+(isso acontece de vez em quando no plano grátis, por inatividade).
+Pra uso ocasional/teste isso não é grave, mas se for usar pra valer
+no dia a dia, vale a pena depois trocarmos esse arquivo por um banco
+de dados de verdade (tem opções gratuitas também) — é só avisar
+quando quiser evoluir pra essa etapa.
+
+
+
+COMO ACESSAR DE OUTROS APARELHOS
+----------------------------------
+- Descubra o IP da máquina onde instalou (no cmd: "ipconfig", olhe o
+  "Endereço IPv4", algo como 192.168.0.50).
+- No tablet da produção e no seu notebook (dentro da rede/VPN da
+  empresa), abra o navegador e acesse:
+     http://192.168.0.50:3000
+  (troque pelo IP real da máquina)
+
+MANTER SEMPRE LIGADO
+----------------------
+Enquanto a janela do terminal com "npm start" estiver aberta, o
+sistema funciona. Se fechar a janela, o site para. Para deixar
+rodando sempre (mesmo reiniciando o PC), peça ajuda ao TI para
+configurar como "serviço do Windows" — ferramentas como o PM2 ou
+NSSM fazem isso automaticamente.
+
+ONDE FICAM OS DADOS
+---------------------
+As ordens ficam salvas num arquivo chamado "orders.json", criado
+automaticamente dentro desta mesma pasta. Fazer backup desse arquivo
+de vez em quando é uma boa ideia.
+
+DÚVIDAS OU AJUSTES
+--------------------
+Qualquer mudança de layout, campos ou comportamento, é só pedir.

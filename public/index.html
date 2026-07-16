@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fila de Ordens - Produção</title>
+<style>
+  :root {
+    --ink: #1E2622;
+    --paper: #F6F3EC;
+    --amber: #C8721A;
+    --teal: #2A5753;
+    --ok: #3C7A56;
+    --line: #D8D2C2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, Segoe UI, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .mono { font-family: "Courier New", monospace; }
+  header { position: sticky; top: 0; background: var(--ink); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; z-index: 10; gap: 12px; }
+  header .brand { display: flex; align-items: center; gap: 10px; }
+  header .brand img { height: 52px; width: 52px; border-radius: 8px; object-fit: cover; background: white; }
+  header .title { color: white; font-weight: 700; letter-spacing: .02em; }
+  .tabs { display: flex; border: 1px solid rgba(255,255,255,.2); border-radius: 6px; overflow: hidden; }
+  .tabs button { border: none; background: transparent; color: white; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .tabs button.active { background: var(--amber); }
+  main { max-width: 640px; margin: 0 auto; padding: 20px 16px 60px; }
+  .card { background: white; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .ticket-head { background: var(--ink); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.6); font-weight: 700; }
+  .nr { font-size: 18px; font-weight: 700; }
+  .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; }
+  .badge.pendente { background: #FBEADC; color: var(--amber); }
+  .badge.concluida { background: #E4EFE7; color: var(--ok); }
+  .section { padding: 12px 16px; border-bottom: 1px solid #EDE8DC; }
+  .section:last-child { border-bottom: none; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--teal); margin-bottom: 4px; }
+  .label-lg { font-size: 13px; }
+  button.danger { background: #B3402F; color: white; border: none; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .produto-nome { font-size: 17px; font-weight: 800; color: var(--ink); }
+  .produto-qtd { font-family: "Courier New", monospace; font-weight: 700; color: var(--amber); font-size: 14px; }
+  .produto-desc { color: #8a8377; font-size: 12.5px; margin-top: 2px; }
+  .comp-row { padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px dashed var(--line); }
+  .comp-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .comp-codigo { font-weight: 700; font-family: "Courier New", monospace; font-size: 14px; }
+  .comp-desc { color: #8a8377; font-size: 12px; margin-top: 2px; }
+  .comp-row .qty { color: var(--amber); font-weight: 700; white-space: nowrap; padding-left: 10px; font-family: "Courier New", monospace; }
+  .comp-check { width: 19px; height: 19px; flex-shrink: 0; accent-color: var(--ok); cursor: pointer; }
+  .comp-row.checked .comp-codigo, .comp-row.checked .comp-desc { color: #aaa; }
+  .comp-row.checked .qty { opacity: .5; }
+  textarea { width: 100%; border: 2px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; }
+  button.primary { background: var(--amber); color: white; border: none; border-radius: 6px; padding: 10px 16px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  button.success { background: var(--ok); color: white; border: none; border-radius: 6px; padding: 12px; font-weight: 700; font-size: 15px; cursor: pointer; width: 100%; }
+  button.link { background: none; border: none; color: var(--teal); font-weight: 700; cursor: pointer; padding: 0; margin-bottom: 12px; }
+  h2.group-title { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; margin: 20px 0 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+  .field span { display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--teal); margin-bottom: 3px; }
+  .field input { width: 100%; border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; }
+  .queue-item { width: 100%; text-align: left; background: white; border: 2px solid var(--line); border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: 10px; }
+  .empty { text-align: center; color: #999; padding: 60px 0; }
+  .muted { color: #999; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="logo.jpg" alt="Ecolub" />
+    <div class="title">Fila de Ordens</div>
+  </div>
+  <div class="tabs">
+    <button id="tab-escritorio" class="active">Escritório</button>
+    <button id="tab-producao">Produção</button>
+  </div>
+</header>
+<main id="app"></main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+const API = "/api/orders";
+let orders = [];
+let mode = "escritorio";
+let openId = null;
+let draft = null;
+let expandedId = null;
+let rawDraft = "";
+
+// ---------- Parser (mesmo formato Datasul) ----------
+function parseOrder(raw) {
+  const lines = raw.split("\n")
+    .map(l => l.replace(/^\s*\|/, "").replace(/\|\s*$/, ""))
+    .filter(l => !/^[\s+\-]+$/.test(l));
+
+  let nr = "";
+  lines.forEach(l => {
+    const nrM = l.match(/Nr:\s*([\d.,]+)/);
+    if (nrM) nr = nrM[1];
+  });
+
+  let item = null;
+  const itemIdx = lines.findIndex(l =>
+    /^\s*[\d.]+\s+\S+/.test(l) && (l.match(/\d{2}\/\d{2}\/\d{4}/g) || []).length >= 1
+  );
+  if (itemIdx >= 0) {
+    const parts = lines[itemIdx].trim().split(/\s+/).filter(Boolean);
+    const dateIdxs = [];
+    parts.forEach((t, i) => { if (/\d{2}\/\d{2}\/\d{4}/.test(t)) dateIdxs.push(i); });
+    item = {
+      codigo: parts[1] || "",
+      unidade: parts[2] || "",
+      quantidade: parts[3] || "",
+      descricao: (lines[itemIdx + 1] || "").trim(),
+    };
+  }
+
+  const componentes = [];
+  const compIdx = lines.findIndex(l => /Componente/i.test(l));
+  if (compIdx >= 0) {
+    const endIdx = lines.findIndex((l, i) => i > compIdx && /ABERTURA/i.test(l));
+    const slice = lines.slice(compIdx + 1, endIdx > 0 ? endIdx : lines.length);
+    for (let i = 0; i < slice.length; i++) {
+      const l = slice[i];
+      if (/^(Descrição|Lote\/Série)\s*$/i.test(l.trim())) continue;
+      if (l.includes("|")) {
+        const [leftRaw, rightRaw] = l.split("|");
+        const leftTokens = leftRaw.trim().split(/\s+/).filter(Boolean);
+        if (leftTokens.length >= 2) {
+          const codigo = leftTokens[0];
+          const quantSolicit = leftTokens[leftTokens.length - 1];
+          const unidade = leftTokens.length > 2 ? leftTokens[1] : "";
+          const descLine = slice[i + 1] && !slice[i + 1].includes("|") ? slice[i + 1].trim() : "";
+          componentes.push({ codigo, unidade, quantSolicit, descricao: descLine });
+          if (descLine) i++;
+        }
+      }
+    }
+  }
+
+  // Conta quantas linhas de Hora Homem e Hora Máquina existem nessa ordem específica
+  const hhIdx = lines.findIndex(l => /HORA\s+HOMEM/i.test(l));
+  const hmIdx = lines.findIndex(l => /HORA\s+M.QUINA/i.test(l));
+  const nfIdx = lines.findIndex(l => /N.MERO\s+DE\s+FUNCION/i.test(l));
+  let horaHomemCount = 2, horaMaquinaCount = 2;
+  if (hhIdx >= 0) {
+    const end = hmIdx > hhIdx ? hmIdx : lines.length;
+    let c = 0;
+    for (let i = hhIdx + 1; i < end; i++) if (/HORA\s+DO\s+IN.CIO/i.test(lines[i])) c++;
+    if (c > 0) horaHomemCount = c;
+  }
+  if (hmIdx >= 0) {
+    const end = nfIdx > hmIdx ? nfIdx : lines.length;
+    let c = 0;
+    for (let i = hmIdx + 1; i < end; i++) if (/HORA\s+DO\s+IN.CIO/i.test(lines[i])) c++;
+    if (c > 0) horaMaquinaCount = c;
+  }
+
+  return { nr, item, componentes, horaHomemCount, horaMaquinaCount, raw };
+}
+
+function newManualData(hhCount, hmCount, compCount) {
+  const n1 = hhCount && hhCount > 0 ? hhCount : 2;
+  const n2 = hmCount && hmCount > 0 ? hmCount : 2;
+  const n3 = compCount && compCount > 0 ? compCount : 0;
+  return {
+    horaInicio: "", horaTermino: "",
+    horaHomem: Array.from({ length: n1 }, () => ({ inicio: "", termino: "" })),
+    horaMaquina: Array.from({ length: n2 }, () => ({ inicio: "", termino: "" })),
+    numFuncionarios: "",
+    componentesChecados: Array.from({ length: n3 }, () => false)
+  };
+}
+
+// ---------- API ----------
+async function fetchOrders() {
+  const res = await fetch(API);
+  orders = await res.json();
+  const tag = document.activeElement && document.activeElement.tagName;
+  const typingNow = tag === "INPUT" || tag === "TEXTAREA";
+  if (!typingNow) render();
+}
+async function addOrder(rawText) {
+  const parsed = parseOrder(rawText);
+  const res = await fetch(API, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ parsed, manualData: newManualData(parsed.horaHomemCount, parsed.horaMaquinaCount, parsed.componentes.length) })
+  });
+  orders = await res.json();
+  render();
+}
+async function completeOrder(id, manualData) {
+  const res = await fetch(`${API}/${id}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ manualData })
+  });
+  orders = await res.json();
+  render();
+}
+async function deleteOrder(id) {
+  const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+  orders = await res.json();
+  render();
+}
+async function reopenOrder(id) {
+  const res = await fetch(`${API}/${id}/reabrir`, { method: "POST" });
+  orders = await res.json();
+  render();
+}
+
+// ---------- Render helpers ----------
+function esc(s) { return (s || "").toString().replace(/</g, "&lt;"); }
+
+function ticketHTML(o, innerExtra, interactive, showComponentes) {
+  const p = o.parsed;
+  const show = showComponentes === undefined ? true : showComponentes;
+  const checados = (o.manualData && o.manualData.componentesChecados) || [];
+  return `
+  <div class="card">
+    <div class="ticket-head">
+      <div><div class="eyebrow">Ordem de Produção</div><div class="nr mono">Nº ${esc(p.nr) || "—"}</div></div>
+      <span class="badge ${o.status}">${o.status === "concluida" ? "Concluída" : "Pendente"}</span>
+    </div>
+    ${p.item ? `<div class="section">
+      <div class="label">Produto</div>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+        <span class="produto-nome">${esc(p.item.codigo)}</span>
+        <span class="produto-qtd">${esc(p.item.quantidade)} ${esc(p.item.unidade)}</span>
+      </div>
+      <div class="produto-desc">${esc(p.item.descricao)}</div>
+    </div>` : ""}
+    ${p.componentes.length ? `<div class="section materias-wrap" style="display:${show ? "block" : "none"}">
+      <div class="label label-lg">Matérias-primas</div>
+      ${p.componentes.map((c, i) => {
+        const checked = !!checados[i];
+        return `<div class="comp-row ${checked ? "checked" : ""}">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+            <label style="display:flex; align-items:center; gap:9px; cursor:${interactive ? "pointer" : "default"};">
+              <input type="checkbox" class="comp-check" data-comp-check="${i}" ${checked ? "checked" : ""} ${interactive ? "" : "disabled"} />
+              <span class="comp-codigo">${esc(c.codigo)}</span>
+            </label>
+            <span class="qty">${esc(c.quantSolicit)} ${esc(c.unidade)}</span>
+          </div>
+          <div class="comp-desc" style="margin-left:28px;">${esc(c.descricao)}</div>
+        </div>`;
+      }).join("")}
+    </div>` : ""}
+    ${innerExtra || ""}
+  </div>`;
+}
+
+function manualFormHTML(data, prefix, readOnly) {
+  const dis = readOnly ? "disabled" : "";
+  const row = (label, path, val) => `<div class="field"><span>${label}</span><input type="time" ${dis} data-path="${path}" value="${esc(val)}"/></div>`;
+  return `
+  <div class="section">
+    <div class="label">Abertura e fechamento da O.P.</div>
+    <div class="grid2">${row("Início", "horaInicio", data.horaInicio)}${row("Término", "horaTermino", data.horaTermino)}</div>
+    <div class="label" style="margin-top:10px">👥 Hora Homem</div>
+    ${data.horaHomem.map((r, i) => `<div class="grid2">${row(`Início ${i+1}`, `horaHomem.${i}.inicio`, r.inicio)}${row(`Término ${i+1}`, `horaHomem.${i}.termino`, r.termino)}</div>`).join("")}
+    <div class="label" style="margin-top:10px">🧪 Hora Máquina</div>
+    ${data.horaMaquina.map((r, i) => `<div class="grid2">${row(`Início ${i+1}`, `horaMaquina.${i}.inicio`, r.inicio)}${row(`Término ${i+1}`, `horaMaquina.${i}.termino`, r.termino)}</div>`).join("")}
+    <div class="field" style="max-width:160px;margin-top:10px"><span>Nº de funcionários</span><input type="number" min="0" ${dis} data-path="numFuncionarios" value="${esc(data.numFuncionarios)}"/></div>
+  </div>`;
+}
+
+function bindManualForm(container, dataRef) {
+  container.querySelectorAll("input[data-path]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const path = inp.dataset.path.split(".");
+      if (path.length === 1) dataRef[path[0]] = inp.value;
+      else dataRef[path[0]][+path[1]][path[2]] = inp.value;
+    });
+  });
+}
+
+// ---------- Views ----------
+function renderEscritorio() {
+  const pendentes = orders.filter(o => o.status !== "concluida");
+  const concluidas = orders.filter(o => o.status === "concluida");
+  const app = document.getElementById("app");
+  app.innerHTML = `
+    <div class="card" style="padding:16px">
+      <div class="label">Colar ordem do Datasul</div>
+      <textarea id="raw" rows="6" placeholder="Cole aqui o texto da ordem (bloco de notas)..."></textarea>
+      <div style="margin-top:10px"><button class="primary" id="addBtn">➕ Enviar para a produção</button></div>
+    </div>
+    <h2 class="group-title" style="color:var(--teal)">Pendentes (${pendentes.length})</h2>
+    ${pendentes.length ? "" : `<p class="muted">Nenhuma ordem pendente.</p>`}
+    <div id="pendentesWrap"></div>
+    <h2 class="group-title" style="color:var(--ok)">Concluídas (${concluidas.length})</h2>
+    <div id="concluidasWrap"></div>
+  `;
+  const rawEl = document.getElementById("raw");
+  rawEl.value = rawDraft;
+  rawEl.addEventListener("input", () => { rawDraft = rawEl.value; });
+  document.getElementById("addBtn").onclick = () => {
+    const val = rawEl.value;
+    if (val.trim()) { rawDraft = ""; addOrder(val); }
+  };
+
+  const pendWrap = document.getElementById("pendentesWrap");
+  pendentes.forEach(o => {
+    const isOpen = expandedId === o.id;
+    const wrapper = document.createElement("div");
+    wrapper.style.cursor = "pointer";
+    wrapper.innerHTML = ticketHTML(o, `<div class="section" data-hint style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <span class="muted" style="font-size:11px;">${isOpen ? "Toque para recolher" : "Toque para ver matérias-primas"}</span>
+        <button class="danger" data-del>🗑 Excluir</button>
+      </div>`, false, isOpen);
+    wrapper.addEventListener("click", (e) => {
+      if (e.target.closest("[data-del]")) return;
+      expandedId = isOpen ? null : o.id;
+      renderEscritorio();
+    });
+    wrapper.querySelector("[data-del]").onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(`Excluir a ordem Nº ${o.parsed.nr || ""}? Essa ação não pode ser desfeita.`)) deleteOrder(o.id);
+    };
+    pendWrap.appendChild(wrapper);
+  });
+  const wrap = document.getElementById("concluidasWrap");
+  concluidas.forEach(o => {
+    const wrapper = document.createElement("div");
+    const isOpen = expandedId === o.id;
+    wrapper.innerHTML = `<div id="ticket-${o.id}">${ticketHTML(o,
+      `<div class="manual-wrap" style="display:${isOpen ? "block" : "none"}">${manualFormHTML(o.manualData, "", true)}</div>` +
+      `<div class="section" data-hint style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <span class="muted" style="font-size:11px; cursor:pointer;" data-toggle>${isOpen ? "Toque para recolher" : "Toque para ver tudo"}</span>
+        <div style="display:flex; gap:8px;">
+          <button class="primary" data-download style="padding:6px 10px; font-size:12px;">📷 Baixar imagem</button>
+          <button class="primary" data-reopen style="padding:6px 10px; font-size:12px; background:var(--teal);">↺ Reabrir</button>
+          <button class="danger" data-del>🗑</button>
+        </div>
+      </div>`, false, isOpen
+    )}</div>`;
+    wrapper.querySelector("[data-toggle]").onclick = () => { expandedId = isOpen ? null : o.id; renderEscritorio(); };
+    wrapper.querySelector("[data-download]").onclick = (e) => { e.stopPropagation(); downloadTicketImage(o); };
+    wrapper.querySelector("[data-reopen]").onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(`Reabrir a ordem Nº ${o.parsed.nr || ""}? Ela volta pra fila da produção.`)) reopenOrder(o.id);
+    };
+    wrapper.querySelector("[data-del]").onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(`Excluir a ordem Nº ${o.parsed.nr || ""}? Essa ação não pode ser desfeita.`)) deleteOrder(o.id);
+    };
+    wrap.appendChild(wrapper);
+  });
+}
+
+function downloadTicketImage(o) {
+  const el = document.getElementById(`ticket-${o.id}`);
+  const manualWrap = el.querySelector(".manual-wrap");
+  const materiasWrap = el.querySelector(".materias-wrap");
+  const hintRow = el.querySelector("[data-hint]");
+  const prevManual = manualWrap.style.display;
+  const prevMaterias = materiasWrap ? materiasWrap.style.display : null;
+  manualWrap.style.display = "block";
+  if (materiasWrap) materiasWrap.style.display = "block";
+  hintRow.style.display = "none";
+  html2canvas(el, { backgroundColor: "#ffffff", scale: 2 }).then(canvas => {
+    manualWrap.style.display = prevManual;
+    if (materiasWrap) materiasWrap.style.display = prevMaterias;
+    hintRow.style.display = "";
+    const link = document.createElement("a");
+    link.download = `ordem-${o.parsed.nr || o.id}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
+}
+
+function renderProducao() {
+  const app = document.getElementById("app");
+  const pendentes = orders.filter(o => o.status !== "concluida");
+  const open = orders.find(o => o.id === openId);
+
+  if (open) {
+    if (!draft || draft._id !== open.id) draft = { ...JSON.parse(JSON.stringify(open.manualData)), _id: open.id };
+    if (!draft.componentesChecados) draft.componentesChecados = new Array(open.parsed.componentes.length).fill(false);
+    app.innerHTML = `
+      <button class="link" id="backBtn">← Voltar para a fila</button>
+      ${ticketHTML(open, manualFormHTML(draft, "", false) + `<div class="section"><button class="success" id="doneBtn">✔ Concluir ordem</button></div>`, true)}
+    `;
+    document.getElementById("backBtn").onclick = () => { openId = null; draft = null; renderProducao(); };
+    bindManualForm(app, draft);
+    app.querySelectorAll("[data-comp-check]").forEach(cb => {
+      cb.addEventListener("change", () => {
+        const idx = +cb.dataset.compCheck;
+        draft.componentesChecados[idx] = cb.checked;
+        cb.closest(".comp-row").classList.toggle("checked", cb.checked);
+      });
+    });
+    document.getElementById("doneBtn").onclick = () => {
+      const { _id, ...clean } = draft;
+      completeOrder(open.id, clean);
+      openId = null; draft = null;
+    };
+    return;
+  }
+
+  app.innerHTML = `
+    <h2 class="group-title" style="color:var(--teal)">Fila da produção (${pendentes.length})</h2>
+    ${pendentes.length ? "" : `<div class="empty">📦<br/>Nenhuma ordem na fila.</div>`}
+    <div id="queueWrap"></div>
+  `;
+  const wrap = document.getElementById("queueWrap");
+  pendentes.forEach(o => {
+    const btn = document.createElement("div");
+    btn.className = "queue-item";
+    btn.innerHTML = `<div><div class="muted mono" style="font-size:12px">Nº ${esc(o.parsed.nr) || "—"}</div><strong>${esc(o.parsed.item?.codigo || "Ordem")}</strong></div><div style="display:flex; align-items:center; gap:10px;"><span class="qty mono" style="font-weight:700;">${esc(o.parsed.item?.quantidade || "")} ${esc(o.parsed.item?.unidade || "")}</span><span class="badge pendente">Pendente</span></div>`;
+    btn.onclick = () => { openId = o.id; renderProducao(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function render() {
+  if (mode === "escritorio") renderEscritorio(); else renderProducao();
+}
+
+document.getElementById("tab-escritorio").onclick = () => {
+  mode = "escritorio";
+  document.getElementById("tab-escritorio").classList.add("active");
+  document.getElementById("tab-producao").classList.remove("active");
+  render();
+};
+document.getElementById("tab-producao").onclick = () => {
+  mode = "producao";
+  document.getElementById("tab-producao").classList.add("active");
+  document.getElementById("tab-escritorio").classList.remove("active");
+  render();
+};
+
+fetchOrders();
+setInterval(fetchOrders, 4000);
+</script>
+</body>
+</html>

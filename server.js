@@ -39,7 +39,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 async function listaAtualizada() {
-  const docs = await ordersCollection.find({}).sort({ createdAt: -1 }).toArray();
+  const docs = await ordersCollection.find({}).sort({ createdAt: 1 }).toArray();
   return docs.map(({ _id, ...rest }) => rest);
 }
 

@@ -71,6 +71,21 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
+// Salva o progresso preenchido (hora, matéria-prima marcada) sem concluir a ordem
+app.patch("/api/orders/:id/rascunho", async (req, res) => {
+  try {
+    const result = await ordersCollection.updateOne(
+      { id: req.params.id },
+      { $set: { manualData: req.body.manualData } }
+    );
+    if (result.matchedCount === 0) return res.status(404).json({ error: "Ordem não encontrada" });
+    res.json(await listaAtualizada());
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Falha ao salvar o progresso" });
+  }
+});
+
 // Marca uma ordem como concluída, com os dados preenchidos pelo operador
 app.patch("/api/orders/:id", async (req, res) => {
   try {

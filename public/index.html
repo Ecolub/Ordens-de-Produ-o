@@ -375,7 +375,7 @@ function renderProducao() {
     if (!draft.componentesChecados) draft.componentesChecados = new Array(open.parsed.componentes.length).fill(false);
     app.innerHTML = `
       <button class="link" id="backBtn">← Voltar para a fila</button>
-      ${ticketHTML(open, manualFormHTML(draft, "", false) + `<div class="section"><button class="success" id="doneBtn">✔ Concluir ordem</button></div>`, true)}
+      ${ticketHTML({ ...open, manualData: draft }, manualFormHTML(draft, "", false) + `<div class="section"><button class="success" id="doneBtn">✔ Concluir ordem</button></div>`, true)}
     `;
     document.getElementById("backBtn").onclick = () => { openId = null; draft = null; renderProducao(); };
     bindManualForm(app, draft);

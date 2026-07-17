@@ -59,6 +59,9 @@
   .time-pair select.time-part { flex: 1; border: 2px solid var(--line); border-radius: 6px; padding: 6px 4px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; background: #fff; text-align: center; }
   .time-pair .time-colon { font-weight: 700; color: #000; }
   .queue-item { width: 100%; text-align: left; background: white; border: 2px solid var(--line); border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: 10px; }
+  .date-sep { display: flex; align-items: center; text-align: center; color: var(--teal); font-weight: 700; font-size: 12px; text-transform: uppercase; margin: 18px 0 10px; }
+  .date-sep::before, .date-sep::after { content: ""; flex: 1; border-bottom: 2px solid var(--line); }
+  .date-sep span { padding: 0 10px; white-space: nowrap; }
   .empty { text-align: center; color: #999; padding: 60px 0; }
   .muted { color: #999; font-size: 13px; }
 </style>
@@ -70,8 +73,8 @@
     <div class="title">Fila de Ordens</div>
   </div>
   <div class="tabs">
-    <button id="tab-escritorio" class="active">Escritório</button>
-    <button id="tab-producao">Produção</button>
+    <button id="tab-escritorio">Escritório</button>
+    <button id="tab-producao" class="active">Produção</button>
   </div>
 </header>
 <main id="app"></main>
@@ -80,7 +83,7 @@
 <script>
 const API = "/api/orders";
 let orders = [];
-let mode = "escritorio";
+let mode = "producao";
 let openId = null;
 let draft = null;
 let expandedId = null;
@@ -400,6 +403,11 @@ function renderEscritorio() {
 
 function downloadTicketImage(o) {
   const el = document.getElementById(`ticket-${o.id}`);
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const newTab = isMobile ? window.open("", "_blank") : null;
+  if (newTab) {
+    newTab.document.write(`<body style="margin:0;background:#111;color:#fff;font-family:sans-serif;text-align:center;padding-top:40px;">Gerando imagem, aguarde...</body>`);
+  }
   const manualWrap = el.querySelector(".manual-wrap");
   const materiasWrap = el.querySelector(".materias-wrap");
   const hintRow = el.querySelector("[data-hint]");
@@ -412,11 +420,21 @@ function downloadTicketImage(o) {
     manualWrap.style.display = prevManual;
     if (materiasWrap) materiasWrap.style.display = prevMaterias;
     hintRow.style.display = "";
-    const link = document.createElement("a");
-    link.download = `ordem-${o.parsed.nr || o.id}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  });
+    const dataUrl = canvas.toDataURL("image/png");
+    if (newTab) {
+      newTab.document.open();
+      newTab.document.write(`<body style="margin:0;background:#111;display:flex;flex-direction:column;align-items:center;">
+        <p style="font-family:sans-serif;color:#fff;text-align:center;padding:14px;margin:0;">Toque e segure na imagem abaixo pra salvar</p>
+        <img src="${dataUrl}" style="max-width:100%;height:auto;" />
+      </body>`);
+      newTab.document.close();
+    } else {
+      const link = document.createElement("a");
+      link.download = `ordem-${o.parsed.nr || o.id}.png`;
+      link.href = dataUrl;
+      link.click();
+    }
+  }).catch(() => { if (newTab) newTab.close(); });
 }
 
 function renderProducao() {
@@ -462,7 +480,22 @@ function renderProducao() {
     <div id="queueWrap"></div>
   `;
   const wrap = document.getElementById("queueWrap");
+  let ultimaData = null;
   pendentes.forEach(o => {
+    const dataOrdem = new Date(o.createdAt || Date.now());
+    const chaveData = dataOrdem.toDateString();
+    if (chaveData !== ultimaData) {
+      ultimaData = chaveData;
+      const hoje = new Date().toDateString();
+      const ontem = new Date(Date.now() - 86400000).toDateString();
+      let rotulo = dataOrdem.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+      if (chaveData === hoje) rotulo = `Hoje, ${dataOrdem.toLocaleDateString("pt-BR")}`;
+      else if (chaveData === ontem) rotulo = `Ontem, ${dataOrdem.toLocaleDateString("pt-BR")}`;
+      const sep = document.createElement("div");
+      sep.className = "date-sep";
+      sep.innerHTML = `<span>${rotulo}</span>`;
+      wrap.appendChild(sep);
+    }
     const btn = document.createElement("div");
     btn.className = "queue-item";
     btn.innerHTML = `<div><div class="muted mono" style="font-size:12px">Nº ${esc(o.parsed.nr) || "—"}</div><strong>${esc(o.parsed.item?.codigo || "Ordem")}</strong></div><div style="display:flex; align-items:center; gap:10px;"><span class="qty mono" style="font-weight:700;">${esc(o.parsed.item?.quantidade || "")} ${esc(o.parsed.item?.unidade || "")}</span><span class="badge pendente">Pendente</span></div>`;

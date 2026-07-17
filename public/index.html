@@ -55,6 +55,9 @@
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
   .field span { display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--teal); margin-bottom: 3px; }
   .field input { width: 100%; border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; }
+  .time-pair { display: flex; align-items: center; gap: 6px; }
+  .time-pair select.time-part { flex: 1; border: 2px solid var(--line); border-radius: 6px; padding: 6px 4px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; background: #fff; text-align: center; }
+  .time-pair .time-colon { font-weight: 700; color: #000; }
   .queue-item { width: 100%; text-align: left; background: white; border: 2px solid var(--line); border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: 10px; }
   .empty { text-align: center; color: #999; padding: 60px 0; }
   .muted { color: #999; font-size: 13px; }
@@ -245,9 +248,27 @@ function ticketHTML(o, innerExtra, interactive, showComponentes) {
   </div>`;
 }
 
+function timeSelectsHTML(path, val, dis) {
+  const parts = (val || "").split(":");
+  const h = parts[0] || "", m = parts[1] || "";
+  const hourOpts = ['<option value="">--</option>'].concat(
+    Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"))
+      .map(v => `<option value="${v}" ${v === h ? "selected" : ""}>${v}</option>`)
+  ).join("");
+  const minOpts = ['<option value="">--</option>'].concat(
+    Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"))
+      .map(v => `<option value="${v}" ${v === m ? "selected" : ""}>${v}</option>`)
+  ).join("");
+  return `<div class="time-pair">
+    <select class="time-part" ${dis} data-path="${path}" data-part="h">${hourOpts}</select>
+    <span class="time-colon">:</span>
+    <select class="time-part" ${dis} data-path="${path}" data-part="m">${minOpts}</select>
+  </div>`;
+}
+
 function manualFormHTML(data, prefix, readOnly) {
   const dis = readOnly ? "disabled" : "";
-  const row = (label, path, val) => `<div class="field"><span>${label}</span><input type="time" ${dis} data-path="${path}" value="${esc(val)}"/></div>`;
+  const row = (label, path, val) => `<div class="field"><span>${label}</span>${timeSelectsHTML(path, val, dis)}</div>`;
   return `
   <div class="section">
     <div class="label">Abertura e fechamento da O.P.</div>
@@ -260,12 +281,45 @@ function manualFormHTML(data, prefix, readOnly) {
   </div>`;
 }
 
+let rascunhoTimer = null;
+async function salvarRascunho(id, manualData) {
+  try {
+    const res = await fetch(`${API}/${id}/rascunho`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ manualData }),
+    });
+    if (res.ok) orders = await res.json();
+  } catch (e) { console.error(e); }
+}
+function agendarSalvarRascunho(id, manualData) {
+  clearTimeout(rascunhoTimer);
+  rascunhoTimer = setTimeout(() => salvarRascunho(id, manualData), 700);
+}
+
 function bindManualForm(container, dataRef) {
+  const autosave = () => {
+    const { _id, ...clean } = dataRef;
+    agendarSalvarRascunho(dataRef._id, clean);
+  };
   container.querySelectorAll("input[data-path]").forEach(inp => {
     inp.addEventListener("input", () => {
       const path = inp.dataset.path.split(".");
       if (path.length === 1) dataRef[path[0]] = inp.value;
       else dataRef[path[0]][+path[1]][path[2]] = inp.value;
+      autosave();
+    });
+  });
+  container.querySelectorAll("select.time-part[data-path]").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const path = sel.dataset.path.split(".");
+      const selects = container.querySelectorAll(`select.time-part[data-path="${sel.dataset.path}"]`);
+      let hVal = "", mVal = "";
+      selects.forEach(s => { if (s.dataset.part === "h") hVal = s.value; else mVal = s.value; });
+      const combined = (hVal && mVal) ? `${hVal}:${mVal}` : "";
+      if (path.length === 1) dataRef[path[0]] = combined;
+      else dataRef[path[0]][+path[1]][path[2]] = combined;
+      autosave();
     });
   });
 }
@@ -377,16 +431,24 @@ function renderProducao() {
       <button class="link" id="backBtn">← Voltar para a fila</button>
       ${ticketHTML({ ...open, manualData: draft }, manualFormHTML(draft, "", false) + `<div class="section"><button class="success" id="doneBtn">✔ Concluir ordem</button></div>`, true)}
     `;
-    document.getElementById("backBtn").onclick = () => { openId = null; draft = null; renderProducao(); };
+    document.getElementById("backBtn").onclick = () => {
+      clearTimeout(rascunhoTimer);
+      const { _id, ...clean } = draft;
+      salvarRascunho(open.id, clean);
+      openId = null; draft = null; renderProducao();
+    };
     bindManualForm(app, draft);
     app.querySelectorAll("[data-comp-check]").forEach(cb => {
       cb.addEventListener("change", () => {
         const idx = +cb.dataset.compCheck;
         draft.componentesChecados[idx] = cb.checked;
         cb.closest(".comp-row").classList.toggle("checked", cb.checked);
+        const { _id, ...clean } = draft;
+        agendarSalvarRascunho(draft._id, clean);
       });
     });
     document.getElementById("doneBtn").onclick = () => {
+      clearTimeout(rascunhoTimer);
       const { _id, ...clean } = draft;
       completeOrder(open.id, clean);
       openId = null; draft = null;

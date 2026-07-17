@@ -176,8 +176,8 @@ async function fetchOrders() {
   const res = await fetch(API);
   orders = await res.json();
   const tag = document.activeElement && document.activeElement.tagName;
-  const typingNow = tag === "INPUT" || tag === "TEXTAREA";
-  if (!typingNow) render();
+  const typingNow = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+  if (!typingNow && openId === null) render();
 }
 async function addOrder(rawText) {
   const parsed = parseOrder(rawText);

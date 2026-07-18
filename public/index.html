@@ -30,6 +30,7 @@
   .nr { font-size: 18px; font-weight: 700; }
   .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; }
   .badge.pendente { background: #FBEADC; color: var(--amber); }
+  .badge.iniciada { background: #DCEEE8; color: var(--teal); }
   .badge.concluida { background: #E4EFE7; color: var(--ok); }
   .section { padding: 12px 16px; border-bottom: 1px solid #EDE8DC; }
   .section:last-child { border-bottom: none; }
@@ -221,7 +222,7 @@ function ticketHTML(o, innerExtra, interactive, showComponentes) {
   <div class="card">
     <div class="ticket-head">
       <div><div class="eyebrow">Ordem de Produção</div><div class="nr mono">Nº ${esc(p.nr) || "—"}</div></div>
-      <span class="badge ${o.status}">${o.status === "concluida" ? "Concluída" : "Pendente"}</span>
+      <span class="badge ${estadoVisual(o).cls}">${estadoVisual(o).label}</span>
     </div>
     ${p.item ? `<div class="section">
       <div class="label">Produto</div>
@@ -330,6 +331,43 @@ function bindManualForm(container, dataRef) {
 }
 
 // ---------- Views ----------
+function rotuloDataSep(date) {
+  const chave = date.toDateString();
+  const hoje = new Date().toDateString();
+  const ontem = new Date(Date.now() - 86400000).toDateString();
+  if (chave === hoje) return `Hoje, ${date.toLocaleDateString("pt-BR")}`;
+  if (chave === ontem) return `Ontem, ${date.toLocaleDateString("pt-BR")}`;
+  return date.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function inserirSeparadorData(container, ultimaDataObj, order) {
+  const dataOrdem = new Date(order.createdAt || Date.now());
+  const chave = dataOrdem.toDateString();
+  if (chave !== ultimaDataObj.valor) {
+    ultimaDataObj.valor = chave;
+    const sep = document.createElement("div");
+    sep.className = "date-sep";
+    sep.innerHTML = `<span>${rotuloDataSep(dataOrdem)}</span>`;
+    container.appendChild(sep);
+  }
+}
+
+function temProgresso(m) {
+  if (!m) return false;
+  if (m.dataInicio || m.horaInicio || m.dataTermino || m.horaTermino) return true;
+  if (m.numFuncionarios) return true;
+  if (Array.isArray(m.horaHomem) && m.horaHomem.some(r => r.inicio || r.termino)) return true;
+  if (Array.isArray(m.horaMaquina) && m.horaMaquina.some(r => r.inicio || r.termino)) return true;
+  if (Array.isArray(m.componentesChecados) && m.componentesChecados.some(Boolean)) return true;
+  return false;
+}
+
+function estadoVisual(o) {
+  if (o.status === "concluida") return { cls: "concluida", label: "Concluída" };
+  if (temProgresso(o.manualData)) return { cls: "iniciada", label: "Iniciada" };
+  return { cls: "pendente", label: "Pendente" };
+}
+
 function renderEscritorio() {
   const pendentes = orders.filter(o => o.status !== "concluida");
   const concluidas = orders.filter(o => o.status === "concluida");
@@ -355,7 +393,9 @@ function renderEscritorio() {
   };
 
   const pendWrap = document.getElementById("pendentesWrap");
+  const ultimaDataPend = { valor: null };
   pendentes.forEach(o => {
+    inserirSeparadorData(pendWrap, ultimaDataPend, o);
     const isOpen = expandedId === o.id;
     const wrapper = document.createElement("div");
     wrapper.style.cursor = "pointer";
@@ -375,7 +415,9 @@ function renderEscritorio() {
     pendWrap.appendChild(wrapper);
   });
   const wrap = document.getElementById("concluidasWrap");
+  const ultimaDataConcl = { valor: null };
   concluidas.forEach(o => {
+    inserirSeparadorData(wrap, ultimaDataConcl, o);
     const wrapper = document.createElement("div");
     const isOpen = expandedId === o.id;
     wrapper.innerHTML = `<div id="ticket-${o.id}">${ticketHTML(o,
@@ -482,25 +524,12 @@ function renderProducao() {
     <div id="queueWrap"></div>
   `;
   const wrap = document.getElementById("queueWrap");
-  let ultimaData = null;
+  const ultimaData = { valor: null };
   pendentes.forEach(o => {
-    const dataOrdem = new Date(o.createdAt || Date.now());
-    const chaveData = dataOrdem.toDateString();
-    if (chaveData !== ultimaData) {
-      ultimaData = chaveData;
-      const hoje = new Date().toDateString();
-      const ontem = new Date(Date.now() - 86400000).toDateString();
-      let rotulo = dataOrdem.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
-      if (chaveData === hoje) rotulo = `Hoje, ${dataOrdem.toLocaleDateString("pt-BR")}`;
-      else if (chaveData === ontem) rotulo = `Ontem, ${dataOrdem.toLocaleDateString("pt-BR")}`;
-      const sep = document.createElement("div");
-      sep.className = "date-sep";
-      sep.innerHTML = `<span>${rotulo}</span>`;
-      wrap.appendChild(sep);
-    }
+    inserirSeparadorData(wrap, ultimaData, o);
     const btn = document.createElement("div");
     btn.className = "queue-item";
-    btn.innerHTML = `<div><div class="muted mono" style="font-size:12px">Nº ${esc(o.parsed.nr) || "—"}</div><strong>${esc(o.parsed.item?.codigo || "Ordem")}</strong></div><div style="display:flex; align-items:center; gap:10px;"><span class="qty mono" style="font-weight:700;">${esc(o.parsed.item?.quantidade || "")} ${esc(o.parsed.item?.unidade || "")}</span><span class="badge pendente">Pendente</span></div>`;
+    btn.innerHTML = `<div><div class="muted mono" style="font-size:12px">Nº ${esc(o.parsed.nr) || "—"}</div><strong>${esc(o.parsed.item?.codigo || "Ordem")}</strong></div><div style="display:flex; align-items:center; gap:10px;"><span class="qty mono" style="font-weight:700;">${esc(o.parsed.item?.quantidade || "")} ${esc(o.parsed.item?.unidade || "")}</span><span class="badge ${estadoVisual(o).cls}">${estadoVisual(o).label}</span></div>`;
     btn.onclick = () => { openId = o.id; renderProducao(); };
     wrap.appendChild(btn);
   });

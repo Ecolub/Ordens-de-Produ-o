@@ -166,7 +166,7 @@ function newManualData(hhCount, hmCount, compCount) {
   const n2 = hmCount && hmCount > 0 ? hmCount : 2;
   const n3 = compCount && compCount > 0 ? compCount : 0;
   return {
-    horaInicio: "", horaTermino: "",
+    dataInicio: "", horaInicio: "", dataTermino: "", horaTermino: "",
     horaHomem: Array.from({ length: n1 }, () => ({ inicio: "", termino: "" })),
     horaMaquina: Array.from({ length: n2 }, () => ({ inicio: "", termino: "" })),
     numFuncionarios: "",
@@ -272,10 +272,12 @@ function timeSelectsHTML(path, val, dis) {
 function manualFormHTML(data, prefix, readOnly) {
   const dis = readOnly ? "disabled" : "";
   const row = (label, path, val) => `<div class="field"><span>${label}</span>${timeSelectsHTML(path, val, dis)}</div>`;
+  const dateRow = (label, path, val) => `<div class="field"><span>${label}</span><input type="date" ${dis} data-path="${path}" value="${esc(val)}"/></div>`;
   return `
   <div class="section">
     <div class="label">Abertura e fechamento da O.P.</div>
-    <div class="grid2">${row("Início", "horaInicio", data.horaInicio)}${row("Término", "horaTermino", data.horaTermino)}</div>
+    <div class="grid2">${dateRow("Data Início", "dataInicio", data.dataInicio)}${row("Hora Início", "horaInicio", data.horaInicio)}</div>
+    <div class="grid2">${dateRow("Data Término", "dataTermino", data.dataTermino)}${row("Hora Término", "horaTermino", data.horaTermino)}</div>
     <div class="label" style="margin-top:10px">👥 Hora Homem</div>
     ${data.horaHomem.map((r, i) => `<div class="grid2">${row(`Início ${i+1}`, `horaHomem.${i}.inicio`, r.inicio)}${row(`Término ${i+1}`, `horaHomem.${i}.termino`, r.termino)}</div>`).join("")}
     <div class="label" style="margin-top:10px">🧪 Hora Máquina</div>

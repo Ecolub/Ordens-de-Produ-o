@@ -36,15 +36,17 @@
   .section:last-child { border-bottom: none; }
   .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--teal); margin-bottom: 4px; }
   .label-lg { font-size: 13px; }
+  .obs-box { width: 100%; min-height: 70px; border: 2px solid var(--line); border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 14px; color: var(--ink); resize: vertical; background: white; }
+  .obs-box:disabled { background: var(--paper); color: var(--ink); opacity: 1; }
   button.danger { background: #B3402F; color: white; border: none; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
   .produto-nome { font-size: 17px; font-weight: 800; color: var(--ink); }
-  .produto-qtd { font-family: "Courier New", monospace; font-weight: 700; color: var(--amber); font-size: 14px; }
+  .produto-qtd { font-family: "Courier New", monospace; font-weight: 700; color: var(--ink); font-size: 14px; }
   .produto-desc { color: #8a8377; font-size: 12.5px; margin-top: 2px; }
   .comp-row { padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px dashed var(--line); }
   .comp-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
   .comp-codigo { font-weight: 700; font-family: "Courier New", monospace; font-size: 14px; }
   .comp-desc { color: #8a8377; font-size: 12px; margin-top: 2px; }
-  .comp-row .qty { color: var(--amber); font-weight: 700; white-space: nowrap; padding-left: 10px; font-family: "Courier New", monospace; }
+  .comp-row .qty { color: var(--ink); font-weight: 700; white-space: nowrap; padding-left: 10px; font-family: "Courier New", monospace; }
   .comp-check { width: 19px; height: 19px; flex-shrink: 0; accent-color: var(--ok); cursor: pointer; }
   .comp-row.checked .comp-codigo, .comp-row.checked .comp-desc { color: #aaa; }
   .comp-row.checked .qty { opacity: .5; }
@@ -171,6 +173,7 @@ function newManualData(hhCount, hmCount, compCount) {
     horaHomem: Array.from({ length: n1 }, () => ({ inicio: "", termino: "" })),
     horaMaquina: Array.from({ length: n2 }, () => ({ inicio: "", termino: "" })),
     numFuncionarios: "",
+    observacoes: "",
     componentesChecados: Array.from({ length: n3 }, () => false)
   };
 }
@@ -284,6 +287,8 @@ function manualFormHTML(data, prefix, readOnly) {
     <div class="label" style="margin-top:10px">🧪 Hora Máquina</div>
     ${data.horaMaquina.map((r, i) => `<div class="grid2">${row(`Início ${i+1}`, `horaMaquina.${i}.inicio`, r.inicio)}${row(`Término ${i+1}`, `horaMaquina.${i}.termino`, r.termino)}</div>`).join("")}
     <div class="field" style="max-width:160px;margin-top:10px"><span>Nº de funcionários</span><input type="number" min="0" ${dis} data-path="numFuncionarios" value="${esc(data.numFuncionarios)}"/></div>
+    <div class="label label-lg" style="margin-top:14px">Observações</div>
+    <textarea class="obs-box" data-path="observacoes" ${dis} placeholder="Alguma observação sobre essa ordem...">${esc(data.observacoes)}</textarea>
   </div>`;
 }
 
@@ -313,6 +318,12 @@ function bindManualForm(container, dataRef) {
       const path = inp.dataset.path.split(".");
       if (path.length === 1) dataRef[path[0]] = inp.value;
       else dataRef[path[0]][+path[1]][path[2]] = inp.value;
+      autosave();
+    });
+  });
+  container.querySelectorAll("textarea[data-path]").forEach(ta => {
+    ta.addEventListener("input", () => {
+      dataRef[ta.dataset.path] = ta.value;
       autosave();
     });
   });
@@ -356,6 +367,7 @@ function temProgresso(m) {
   if (!m) return false;
   if (m.dataInicio || m.horaInicio || m.dataTermino || m.horaTermino) return true;
   if (m.numFuncionarios) return true;
+  if (m.observacoes && m.observacoes.trim()) return true;
   if (Array.isArray(m.horaHomem) && m.horaHomem.some(r => r.inicio || r.termino)) return true;
   if (Array.isArray(m.horaMaquina) && m.horaMaquina.some(r => r.inicio || r.termino)) return true;
   if (Array.isArray(m.componentesChecados) && m.componentesChecados.some(Boolean)) return true;

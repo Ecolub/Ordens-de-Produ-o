@@ -59,7 +59,7 @@
   .field span { display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--teal); margin-bottom: 3px; }
   .field input { width: 100%; border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; }
   .time-pair { display: flex; align-items: center; gap: 6px; }
-  .time-pair select.time-part { flex: 1; border: 2px solid var(--line); border-radius: 6px; padding: 6px 4px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; background: #fff; text-align: center; }
+  .time-pair select.time-part, .time-pair select.date-part { flex: 1; border: 2px solid var(--line); border-radius: 6px; padding: 6px 4px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; background: #fff; text-align: center; }
   .time-pair .time-colon { font-weight: 700; color: #000; }
   .queue-item { width: 100%; text-align: left; background: white; border: 2px solid var(--line); border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: 10px; }
   .date-sep { display: flex; align-items: center; text-align: center; color: var(--teal); font-weight: 700; font-size: 12px; text-transform: uppercase; margin: 18px 0 10px; }
@@ -273,10 +273,35 @@ function timeSelectsHTML(path, val, dis) {
   </div>`;
 }
 
+function dateSelectsHTML(path, val, dis) {
+  const parts = (val || "").split("-");
+  const y = parts[0] || "", mo = parts[1] || "", d = parts[2] || "";
+  const dayOpts = ['<option value="">--</option>'].concat(
+    Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"))
+      .map(v => `<option value="${v}" ${v === d ? "selected" : ""}>${v}</option>`)
+  ).join("");
+  const monthOpts = ['<option value="">--</option>'].concat(
+    Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"))
+      .map(v => `<option value="${v}" ${v === mo ? "selected" : ""}>${v}</option>`)
+  ).join("");
+  const anoAtual = new Date().getFullYear();
+  const yearOpts = ['<option value="">----</option>'].concat(
+    Array.from({ length: 6 }, (_, i) => String(anoAtual - 2 + i))
+      .map(v => `<option value="${v}" ${v === y ? "selected" : ""}>${v}</option>`)
+  ).join("");
+  return `<div class="time-pair">
+    <select class="date-part" ${dis} data-path="${path}" data-part="d">${dayOpts}</select>
+    <span class="time-colon">/</span>
+    <select class="date-part" ${dis} data-path="${path}" data-part="m">${monthOpts}</select>
+    <span class="time-colon">/</span>
+    <select class="date-part" ${dis} data-path="${path}" data-part="y">${yearOpts}</select>
+  </div>`;
+}
+
 function manualFormHTML(data, prefix, readOnly) {
   const dis = readOnly ? "disabled" : "";
   const row = (label, path, val) => `<div class="field"><span>${label}</span>${timeSelectsHTML(path, val, dis)}</div>`;
-  const dateRow = (label, path, val) => `<div class="field"><span>${label}</span><input type="date" ${dis} data-path="${path}" value="${esc(val)}"/></div>`;
+  const dateRow = (label, path, val) => `<div class="field"><span>${label}</span>${dateSelectsHTML(path, val, dis)}</div>`;
   return `
   <div class="section">
     <div class="label">Abertura e fechamento da O.P.</div>
@@ -334,6 +359,22 @@ function bindManualForm(container, dataRef) {
       let hVal = "", mVal = "";
       selects.forEach(s => { if (s.dataset.part === "h") hVal = s.value; else mVal = s.value; });
       const combined = (hVal && mVal) ? `${hVal}:${mVal}` : "";
+      if (path.length === 1) dataRef[path[0]] = combined;
+      else dataRef[path[0]][+path[1]][path[2]] = combined;
+      autosave();
+    });
+  });
+  container.querySelectorAll("select.date-part[data-path]").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const path = sel.dataset.path.split(".");
+      const selects = container.querySelectorAll(`select.date-part[data-path="${sel.dataset.path}"]`);
+      let dVal = "", mVal = "", yVal = "";
+      selects.forEach(s => {
+        if (s.dataset.part === "d") dVal = s.value;
+        else if (s.dataset.part === "m") mVal = s.value;
+        else yVal = s.value;
+      });
+      const combined = (dVal && mVal && yVal) ? `${yVal}-${mVal}-${dVal}` : "";
       if (path.length === 1) dataRef[path[0]] = combined;
       else dataRef[path[0]][+path[1]][path[2]] = combined;
       autosave();

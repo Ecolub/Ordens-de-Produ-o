@@ -58,6 +58,7 @@
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
   .field span { display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--teal); margin-bottom: 3px; }
   .field input { width: 100%; border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; }
+  .date-readonly { width: 100%; box-sizing: border-box; border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; background: var(--paper); }
   .time-pair { display: flex; align-items: center; gap: 6px; }
   .time-pair select.time-part, .time-pair select.date-part { flex: 1; border: 2px solid var(--line); border-radius: 6px; padding: 6px 4px; font-size: 15px; font-family: "Courier New", monospace; color: #000; font-weight: 700; background: #fff; text-align: center; }
   .time-pair .time-colon { font-weight: 700; color: #000; }
@@ -329,10 +330,17 @@ function dateSelectsHTML(path, val, dis) {
   return `<input type="date" class="date-native" ${dis} data-path="${path}" value="${val || ""}"/>`;
 }
 
+function formatarDataBR(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return "—";
+  return `${d}/${m}/${y}`;
+}
+
 function manualFormHTML(data, prefix, readOnly) {
   const dis = readOnly ? "disabled" : "";
   const row = (label, path, val) => `<div class="field"><span>${label}</span>${timeSelectsHTML(path, val, dis)}</div>`;
-  const dateRow = (label, path, val) => `<div class="field"><span>${label}</span>${dateSelectsHTML(path, val, dis)}</div>`;
+  const dateRow = (label, path, val) => `<div class="field"><span>${label}</span>${readOnly ? `<div class="date-readonly">${formatarDataBR(val)}</div>` : dateSelectsHTML(path, val, dis)}</div>`;
   return `
   <div class="section">
     <div class="label">Abertura e fechamento da O.P.</div>

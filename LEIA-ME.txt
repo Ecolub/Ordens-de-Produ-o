@@ -109,13 +109,57 @@ PASSO 2 - Criar conta no Render (gratuito, hospeda o programa)
 
 IMPORTANTE - sobre os dados na nuvem
 ---------------------------------------
-No plano gratuito do Render, o arquivo "orders.json" (onde ficam as
-ordens salvas) pode ser apagado se o servidor reiniciar sozinho
-(isso acontece de vez em quando no plano grátis, por inatividade).
-Pra uso ocasional/teste isso não é grave, mas se for usar pra valer
-no dia a dia, vale a pena depois trocarmos esse arquivo por um banco
-de dados de verdade (tem opções gratuitas também) — é só avisar
-quando quiser evoluir pra essa etapa.
+Esta versão já usa um banco de dados de verdade (MongoDB Atlas,
+gratuito), então as ordens NÃO se perdem mais quando o Render
+reinicia ou "dorme" por inatividade. Antes de publicar, siga a seção
+"BANCO DE DADOS GRATUITO" abaixo pra criar sua conta do MongoDB
+Atlas e configurar a variável MONGODB_URI no Render — sem isso, o
+programa não consegue salvar nada.
+
+
+BANCO DE DADOS GRATUITO (MongoDB Atlas) - pra nada se perder
+==================================================================
+PASSO 1 - Criar a conta e o banco
+-------------------------------------
+1. Acesse mongodb.com/cloud/atlas/register e crie uma conta
+   gratuita (não pede cartão de crédito).
+2. Na tela de criar um banco, escolha o plano "M0 Free".
+3. Escolha qualquer região (pode deixar a sugerida) e clique em
+   "Create".
+
+PASSO 2 - Criar o usuário do banco
+--------------------------------------
+1. Vai aparecer uma tela pedindo pra criar um usuário de acesso.
+   Escolha um nome de usuário (ex: ecolub) e uma senha (anote essa
+   senha, vai precisar dela daqui a pouco).
+2. Em "Where would you like to connect from", escolha a opção
+   "My Local Environment" e depois clique em "Add a Different IP
+   Address", digite 0.0.0.0/0 e confirme (isso libera o acesso de
+   qualquer lugar, necessário porque o Render não tem um endereço
+   fixo).
+3. Clique em "Finish and Close".
+
+PASSO 3 - Pegar o link de conexão
+-------------------------------------
+1. No painel, clique em "Connect" no seu banco (Cluster0).
+2. Escolha "Drivers".
+3. Vai aparecer um link parecido com:
+   mongodb+srv://ecolub:<db_password>@cluster0.xxxxx.mongodb.net/...
+4. Copia esse link e troca "<db_password>" pela senha que você
+   criou no passo 2 (sem os sinais < >).
+
+PASSO 4 - Configurar no Render
+-----------------------------------
+1. No painel do Render, entra no seu Web Service.
+2. Vai em "Environment".
+3. Clica em "Add Environment Variable":
+   - Key: MONGODB_URI
+   - Value: cola o link do passo 3 (já com a senha trocada)
+4. Clica em "Save Changes" — o Render reinicia sozinho já
+   conectado ao banco.
+
+Pronto — a partir daqui, nenhuma ordem se perde mais, nem quando o
+serviço reiniciar.
 
 
 

@@ -68,6 +68,9 @@
   .date-sep span { padding: 0 10px; white-space: nowrap; }
   .empty { text-align: center; color: #999; padding: 60px 0; }
   .muted { color: #999; font-size: 13px; }
+  .colunas-hint { margin-top: 8px; font-size: 11px; color: var(--teal); background: #EAF3F1; border-radius: 6px; padding: 8px 10px; font-weight: 700; letter-spacing: .02em; }
+  .radio-group { display: flex; gap: 14px; font-size: 13px; font-weight: 700; color: var(--ink); }
+  .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
   .nova-ordem-banner { position: fixed; top: 0; left: 0; right: 0; background: var(--amber); color: #fff; text-align: center; padding: 16px; font-weight: 800; font-size: 16px; z-index: 999; box-shadow: 0 2px 10px rgba(0,0,0,.25); animation: piscarBanner 1s infinite; cursor: pointer; }
   @keyframes piscarBanner { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 </style>
@@ -81,6 +84,7 @@
   <div class="tabs">
     <button id="tab-escritorio">Escritório</button>
     <button id="tab-producao" class="active">Produção</button>
+    <button id="tab-recebimento">Recebimento</button>
   </div>
 </header>
 <main id="app"></main>
@@ -132,6 +136,7 @@ let idsConhecidos = null;
 let draft = null;
 let expandedId = null;
 let rawDraft = "";
+let tipoEnvio = "producao";
 
 // ---------- Parser (mesmo formato Datasul) ----------
 function parseOrder(raw) {
@@ -219,11 +224,40 @@ function newManualData(hhCount, hmCount, compCount) {
   };
 }
 
+// ---------- Recebimento ----------
+function parseLinhaRecebimento(linha) {
+  const partes = linha.split("//").map(s => s.trim());
+  return {
+    fornecedor: partes[0] || "",
+    itemEcolub: partes[1] || "",
+    itemFornecedor: partes[2] || "",
+    quantidade: partes[3] || "",
+    preco: partes[4] || "",
+    dataPrevista: partes[5] || "",
+    ordemCompra: partes[6] || "",
+  };
+}
+function newRecebimentoManualData() {
+  return { dataRecebimento: "", horaRecebimento: "", quemRecebeu: "" };
+}
+async function addRecebimentos(rawText) {
+  const linhas = rawText.split("\n").map(l => l.trim()).filter(Boolean);
+  for (const linha of linhas) {
+    await fetch(API, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipo: "recebimento", parsed: parseLinhaRecebimento(linha), manualData: newRecebimentoManualData() })
+    });
+  }
+  const res = await fetch(API);
+  orders = await res.json();
+  render();
+}
+
 // ---------- API ----------
 async function fetchOrders() {
   const res = await fetch(API);
   orders = await res.json();
-  const idsPendentesAgora = new Set(orders.filter(o => o.status !== "concluida").map(o => o.id));
+  const idsPendentesAgora = new Set(orders.filter(o => o.status !== "concluida" && (o.tipo || "producao") === "producao").map(o => o.id));
   if (idsConhecidos === null) {
     idsConhecidos = idsPendentesAgora;
   } else {
@@ -243,7 +277,7 @@ async function addOrder(rawText) {
   const parsed = parseOrder(rawText);
   const res = await fetch(API, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ parsed, manualData: newManualData(parsed.horaHomemCount, parsed.horaMaquinaCount, parsed.componentes.length) })
+    body: JSON.stringify({ tipo: "producao", parsed, manualData: newManualData(parsed.horaHomemCount, parsed.horaMaquinaCount, parsed.componentes.length) })
   });
   orders = await res.json();
   render();
@@ -305,6 +339,45 @@ function ticketHTML(o, innerExtra, interactive, showComponentes) {
       }).join("")}
     </div>` : ""}
     ${innerExtra || ""}
+  </div>`;
+}
+
+function recebimentoTicketHTML(o, innerExtra) {
+  const p = o.parsed;
+  return `
+  <div class="card">
+    <div class="ticket-head">
+      <div><div class="eyebrow">Recebimento • OC ${esc(p.ordemCompra) || "—"}</div><div class="nr mono">${esc(p.fornecedor) || "—"}</div></div>
+      <span class="badge ${estadoVisual(o).cls}">${estadoVisual(o).label}</span>
+    </div>
+    <div class="section">
+      <div class="label">Produto</div>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+        <span class="produto-nome">${esc(p.itemEcolub)}</span>
+        <span class="produto-qtd">${esc(p.quantidade)}</span>
+      </div>
+      <div class="produto-desc">${esc(p.itemFornecedor)}</div>
+    </div>
+    <div class="section">
+      <div class="grid2">
+        <div class="field"><span>Preço</span><div class="date-readonly">${esc(p.preco)}</div></div>
+        <div class="field"><span>Data prevista</span><div class="date-readonly">${esc(p.dataPrevista)}</div></div>
+      </div>
+    </div>
+    ${innerExtra || ""}
+  </div>`;
+}
+
+function recebimentoFormHTML(data, readOnly) {
+  const dis = readOnly ? "disabled" : "";
+  return `
+  <div class="section">
+    <div class="label">Confirmar recebimento</div>
+    <div class="grid2">
+      <div class="field"><span>Data que recebeu</span>${readOnly ? `<div class="date-readonly">${formatarDataBR(data.dataRecebimento)}</div>` : dateSelectsHTML("dataRecebimento", data.dataRecebimento, dis)}</div>
+      <div class="field"><span>Hora</span>${timeSelectsHTML("horaRecebimento", data.horaRecebimento, dis)}</div>
+    </div>
+    <div class="field" style="margin-top:8px"><span>Quem recebeu</span><input type="text" ${dis} data-path="quemRecebeu" value="${esc(data.quemRecebeu)}"/></div>
   </div>`;
 }
 
@@ -435,6 +508,7 @@ function temProgresso(m) {
   if (Array.isArray(m.horaHomem) && m.horaHomem.some(r => r.inicio || r.termino)) return true;
   if (Array.isArray(m.horaMaquina) && m.horaMaquina.some(r => r.inicio || r.termino)) return true;
   if (Array.isArray(m.componentesChecados) && m.componentesChecados.some(Boolean)) return true;
+  if (m.dataRecebimento || m.horaRecebimento || (m.quemRecebeu && m.quemRecebeu.trim())) return true;
   return false;
 }
 
@@ -445,27 +519,44 @@ function estadoVisual(o) {
 }
 
 function renderEscritorio() {
-  const pendentes = orders.filter(o => o.status !== "concluida");
-  const concluidas = orders.filter(o => o.status === "concluida");
+  const producaoOrders = orders.filter(o => (o.tipo || "producao") === "producao");
+  const recebimentoOrders = orders.filter(o => o.tipo === "recebimento");
+  const pendentes = producaoOrders.filter(o => o.status !== "concluida");
+  const concluidas = producaoOrders.filter(o => o.status === "concluida");
+  const recebimentosConcluidos = recebimentoOrders.filter(o => o.status === "concluida");
   const app = document.getElementById("app");
   app.innerHTML = `
     <div class="card" style="padding:16px">
-      <div class="label">Colar ordem do Datasul</div>
-      <textarea id="raw" rows="6" placeholder="Cole aqui o texto da ordem (bloco de notas)..."></textarea>
-      <div style="margin-top:10px"><button class="primary" id="addBtn">➕ Enviar para a produção</button></div>
+      <div class="label">Colar informações</div>
+      <textarea id="raw" rows="6" placeholder="Cole aqui o texto..."></textarea>
+      ${tipoEnvio === "recebimento" ? `<div class="colunas-hint mono">FORNECEDOR // ITEM ECOLUB // ITEM FORNECEDOR // QUANTIDADE // PREÇO // DATA PREVISTA // ORDEM DE COMPRA</div>` : ""}
+      <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <button class="primary" id="addBtn">➕ Enviar</button>
+        <div class="radio-group">
+          <label><input type="radio" name="tipoEnvio" value="producao" ${tipoEnvio === "producao" ? "checked" : ""}/> Produção</label>
+          <label><input type="radio" name="tipoEnvio" value="recebimento" ${tipoEnvio === "recebimento" ? "checked" : ""}/> Recebimento</label>
+        </div>
+      </div>
     </div>
     <h2 class="group-title" style="color:var(--teal)">Pendentes (${pendentes.length})</h2>
     ${pendentes.length ? "" : `<p class="muted">Nenhuma ordem pendente.</p>`}
     <div id="pendentesWrap"></div>
     <h2 class="group-title" style="color:var(--ok)">Concluídas (${concluidas.length})</h2>
     <div id="concluidasWrap"></div>
+    <div class="date-sep" style="margin-top:34px"><span>Recebimento</span></div>
+    <div id="recebimentosWrap"></div>
   `;
   const rawEl = document.getElementById("raw");
   rawEl.value = rawDraft;
   rawEl.addEventListener("input", () => { rawDraft = rawEl.value; });
+  app.querySelectorAll('input[name="tipoEnvio"]').forEach(r => {
+    r.onchange = () => { tipoEnvio = r.value; renderEscritorio(); };
+  });
   document.getElementById("addBtn").onclick = () => {
     const val = rawEl.value;
-    if (val.trim()) { rawDraft = ""; addOrder(val); }
+    if (!val.trim()) return;
+    rawDraft = "";
+    if (tipoEnvio === "recebimento") addRecebimentos(val); else addOrder(val);
   };
 
   const pendWrap = document.getElementById("pendentesWrap");
@@ -519,6 +610,35 @@ function renderEscritorio() {
     };
     wrap.appendChild(wrapper);
   });
+
+  const recWrap = document.getElementById("recebimentosWrap");
+  if (!recebimentosConcluidos.length) {
+    recWrap.innerHTML = `<p class="muted">Nenhum recebimento concluído ainda.</p>`;
+  }
+  recebimentosConcluidos.forEach(o => {
+    const wrapper = document.createElement("div");
+    const isOpen = expandedId === o.id;
+    wrapper.innerHTML = `<div id="ticket-${o.id}">${recebimentoTicketHTML(o,
+      `<div class="manual-wrap" style="display:${isOpen ? "block" : "none"}">${recebimentoFormHTML(o.manualData, true)}</div>` +
+      `<div class="section" data-hint style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <span class="muted" style="font-size:11px; cursor:pointer;" data-toggle>${isOpen ? "Toque para recolher" : "Toque para ver detalhes"}</span>
+        <div style="display:flex; gap:8px;">
+          <button class="primary" data-reopen style="padding:6px 10px; font-size:12px; background:var(--teal);">↺ Reabrir</button>
+          <button class="danger" data-del>🗑</button>
+        </div>
+      </div>`
+    )}</div>`;
+    wrapper.querySelector("[data-toggle]").onclick = () => { expandedId = isOpen ? null : o.id; renderEscritorio(); };
+    wrapper.querySelector("[data-reopen]").onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(`Reabrir esse recebimento? Ele volta pra fila de recebimento.`)) reopenOrder(o.id);
+    };
+    wrapper.querySelector("[data-del]").onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(`Excluir esse recebimento? Essa ação não pode ser desfeita.`)) deleteOrder(o.id);
+    };
+    recWrap.appendChild(wrapper);
+  });
 }
 
 function downloadTicketImage(o) {
@@ -559,8 +679,9 @@ function downloadTicketImage(o) {
 
 function renderProducao() {
   const app = document.getElementById("app");
-  const pendentes = orders.filter(o => o.status !== "concluida");
-  const open = orders.find(o => o.id === openId);
+  const producaoOrders = orders.filter(o => (o.tipo || "producao") === "producao");
+  const pendentes = producaoOrders.filter(o => o.status !== "concluida");
+  const open = producaoOrders.find(o => o.id === openId);
 
   if (open) {
     if (!draft || draft._id !== open.id) draft = { ...JSON.parse(JSON.stringify(open.manualData)), _id: open.id };
@@ -611,20 +732,74 @@ function renderProducao() {
   });
 }
 
+function renderRecebimento() {
+  const app = document.getElementById("app");
+  const recebimentos = orders.filter(o => o.tipo === "recebimento");
+  const pendentes = recebimentos.filter(o => o.status !== "concluida");
+  const open = recebimentos.find(o => o.id === openId);
+
+  if (open) {
+    if (!draft || draft._id !== open.id) draft = { ...JSON.parse(JSON.stringify(open.manualData)), _id: open.id };
+    app.innerHTML = `
+      <button class="link" id="backBtn">← Voltar para a fila</button>
+      ${recebimentoTicketHTML({ ...open, manualData: draft }, recebimentoFormHTML(draft, false) + `<div class="section"><button class="success" id="doneBtn">✔ Confirmar recebimento</button></div>`)}
+    `;
+    document.getElementById("backBtn").onclick = () => {
+      clearTimeout(rascunhoTimer);
+      const { _id, ...clean } = draft;
+      salvarRascunho(open.id, clean);
+      openId = null; draft = null; renderRecebimento();
+    };
+    bindManualForm(app, draft);
+    document.getElementById("doneBtn").onclick = () => {
+      clearTimeout(rascunhoTimer);
+      const { _id, ...clean } = draft;
+      completeOrder(open.id, clean);
+      openId = null; draft = null;
+    };
+    return;
+  }
+
+  app.innerHTML = `
+    <h2 class="group-title" style="color:var(--teal)">Recebimentos pendentes (${pendentes.length})</h2>
+    ${pendentes.length ? "" : `<div class="empty">📦<br/>Nenhum recebimento pendente.</div>`}
+    <div id="queueWrap"></div>
+  `;
+  const wrap = document.getElementById("queueWrap");
+  pendentes.forEach(o => {
+    const btn = document.createElement("div");
+    btn.className = "queue-item";
+    btn.innerHTML = `<div><div class="muted mono" style="font-size:12px">${esc(o.parsed.fornecedor) || "—"}</div><strong>${esc(o.parsed.itemEcolub || "Item")}</strong></div><div style="display:flex; align-items:center; gap:10px;"><span class="qty mono" style="font-weight:700;">${esc(o.parsed.quantidade || "")}</span><span class="badge ${estadoVisual(o).cls}">${estadoVisual(o).label}</span></div>`;
+    btn.onclick = () => { openId = o.id; renderRecebimento(); };
+    wrap.appendChild(btn);
+  });
+}
+
 function render() {
-  if (mode === "escritorio") renderEscritorio(); else renderProducao();
+  if (mode === "escritorio") renderEscritorio();
+  else if (mode === "recebimento") renderRecebimento();
+  else renderProducao();
 }
 
 document.getElementById("tab-escritorio").onclick = () => {
   mode = "escritorio";
   document.getElementById("tab-escritorio").classList.add("active");
   document.getElementById("tab-producao").classList.remove("active");
+  document.getElementById("tab-recebimento").classList.remove("active");
   render();
 };
 document.getElementById("tab-producao").onclick = () => {
   mode = "producao";
   document.getElementById("tab-producao").classList.add("active");
   document.getElementById("tab-escritorio").classList.remove("active");
+  document.getElementById("tab-recebimento").classList.remove("active");
+  render();
+};
+document.getElementById("tab-recebimento").onclick = () => {
+  mode = "recebimento";
+  document.getElementById("tab-recebimento").classList.add("active");
+  document.getElementById("tab-escritorio").classList.remove("active");
+  document.getElementById("tab-producao").classList.remove("active");
   render();
 };
 

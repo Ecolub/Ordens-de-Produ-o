@@ -58,6 +58,7 @@ app.post("/api/orders", async (req, res) => {
   try {
     const newOrder = {
       id: `ord-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      tipo: req.body.tipo || "producao",
       status: "pendente",
       parsed: req.body.parsed,
       manualData: req.body.manualData,

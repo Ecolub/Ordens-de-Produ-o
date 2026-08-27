@@ -28,7 +28,7 @@
   .ticket-head { background: var(--ink); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
   .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.6); font-weight: 700; }
   .nr { font-size: 18px; font-weight: 700; }
-  .oc-destaque { font-size: 15px; font-weight: 800; color: var(--amber); margin-top: 4px; }
+  .oc-destaque { display: inline-block; font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--amber); background: #FBEADC; padding: 4px 10px; border-radius: 999px; margin-top: 6px; }
   .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; }
   .badge.pendente { background: #FBEADC; color: var(--amber); }
   .badge.iniciada { background: #DCEEE8; color: var(--teal); }
@@ -348,7 +348,7 @@ function recebimentoTicketHTML(o, innerExtra) {
   return `
   <div class="card">
     <div class="ticket-head">
-      <div><div class="eyebrow">Recebimento</div><div class="nr mono">${esc(p.fornecedor) || "—"}</div><div class="oc-destaque mono">Ordem de Compra ${esc(p.ordemCompra) || "—"}</div></div>
+      <div><div class="eyebrow">Recebimento</div><div class="nr mono">${esc(p.fornecedor) || "—"}</div><div class="oc-destaque">Ordem de Compra ${esc(p.ordemCompra) || "—"}</div></div>
       <span class="badge ${estadoVisual(o).cls}">${estadoVisual(o).label}</span>
     </div>
     <div class="section">
@@ -624,12 +624,14 @@ function renderEscritorio() {
       `<div class="section" data-hint style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
         <span class="muted" style="font-size:11px; cursor:pointer;" data-toggle>${isOpen ? "Toque para recolher" : "Toque para ver detalhes"}</span>
         <div style="display:flex; gap:8px;">
+          <button class="primary" data-download style="padding:6px 10px; font-size:12px;">📷 Baixar imagem</button>
           <button class="primary" data-reopen style="padding:6px 10px; font-size:12px; background:var(--teal);">↺ Reabrir</button>
           <button class="danger" data-del>🗑</button>
         </div>
       </div>`
     )}</div>`;
     wrapper.querySelector("[data-toggle]").onclick = () => { expandedId = isOpen ? null : o.id; renderEscritorio(); };
+    wrapper.querySelector("[data-download]").onclick = (e) => { e.stopPropagation(); downloadTicketImage(o); };
     wrapper.querySelector("[data-reopen]").onclick = (e) => {
       e.stopPropagation();
       if (confirm(`Reabrir esse recebimento? Ele volta pra fila de recebimento.`)) reopenOrder(o.id);
@@ -671,7 +673,7 @@ function downloadTicketImage(o) {
       newTab.document.close();
     } else {
       const link = document.createElement("a");
-      link.download = `ordem-${o.parsed.nr || o.id}.png`;
+      link.download = `ordem-${o.parsed.nr || o.parsed.ordemCompra || o.id}.png`;
       link.href = dataUrl;
       link.click();
     }

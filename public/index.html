@@ -772,7 +772,7 @@ function renderRecebimento() {
   pendentes.forEach(o => {
     const btn = document.createElement("div");
     btn.className = "queue-item";
-    btn.innerHTML = `<div><div class="mono" style="font-size:14px;font-weight:700;color:var(--ink);">${esc(o.parsed.fornecedor) || "—"}</div><strong>${esc(o.parsed.itemEcolub || "Item")}</strong></div><div style="display:flex; align-items:center; gap:10px;"><span class="qty mono" style="font-weight:700;">${esc(o.parsed.quantidade || "")}</span><span class="badge ${estadoVisual(o).cls}">${estadoVisual(o).label}</span></div>`;
+    btn.innerHTML = `<div><div style="font-size:12px;font-weight:600;color:var(--ink);">${esc(o.parsed.fornecedor) || "—"}</div><strong style="font-size:16px;">${esc(o.parsed.itemEcolub || "Item")}</strong></div><div style="display:flex; align-items:center; gap:10px;"><div style="text-align:right;"><div class="qty mono" style="font-weight:700;">${esc(o.parsed.quantidade || "")}</div><div class="muted" style="font-size:11px;">${esc(o.parsed.dataPrevista) || ""}</div></div><span class="badge ${estadoVisual(o).cls}">${estadoVisual(o).label}</span></div>`;
     btn.onclick = () => { openId = o.id; renderRecebimento(); };
     wrap.appendChild(btn);
   });

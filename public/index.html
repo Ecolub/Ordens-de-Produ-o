@@ -239,14 +239,15 @@ function parseLinhaRecebimento(linha) {
   };
 }
 function newRecebimentoManualData() {
-  return { dataRecebimento: "", horaRecebimento: "", quemRecebeu: "" };
+  return { dataRecebimento: "", horaRecebimento: "", quemRecebeu: "", precoRecebido: "", notaFiscal: "" };
 }
 async function addRecebimentos(rawText) {
   const linhas = rawText.split("\n").map(l => l.trim()).filter(Boolean);
   for (const linha of linhas) {
+    const parsed = parseLinhaRecebimento(linha);
     await fetch(API, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tipo: "recebimento", parsed: parseLinhaRecebimento(linha), manualData: newRecebimentoManualData() })
+      body: JSON.stringify({ tipo: "recebimento", parsed, manualData: newRecebimentoManualData() })
     });
   }
   const res = await fetch(API);
@@ -361,7 +362,7 @@ function recebimentoTicketHTML(o, innerExtra) {
     </div>
     <div class="section">
       <div class="grid2">
-        <div class="field"><span>Preço</span><div class="date-readonly">${esc(p.preco)}</div></div>
+        <div class="field"><span>Preço Cotado</span><div class="date-readonly">${esc(p.preco)}</div></div>
         <div class="field"><span>Data prevista</span><div class="date-readonly">${esc(p.dataPrevista)}</div></div>
       </div>
     </div>
@@ -374,6 +375,10 @@ function recebimentoFormHTML(data, readOnly) {
   return `
   <div class="section">
     <div class="label">Confirmar recebimento</div>
+    <div class="grid2">
+      <div class="field"><span>Preço Recebido</span><input type="text" ${dis} data-path="precoRecebido" value="${esc(data.precoRecebido)}"/></div>
+      <div class="field"><span>Nº da Nota Fiscal</span><input type="text" ${dis} data-path="notaFiscal" value="${esc(data.notaFiscal)}"/></div>
+    </div>
     <div class="grid2">
       <div class="field"><span>Data que recebeu</span>${readOnly ? `<div class="date-readonly">${formatarDataBR(data.dataRecebimento)}</div>` : dateSelectsHTML("dataRecebimento", data.dataRecebimento, dis)}</div>
       <div class="field"><span>Hora</span>${timeSelectsHTML("horaRecebimento", data.horaRecebimento, dis)}</div>
@@ -509,7 +514,7 @@ function temProgresso(m) {
   if (Array.isArray(m.horaHomem) && m.horaHomem.some(r => r.inicio || r.termino)) return true;
   if (Array.isArray(m.horaMaquina) && m.horaMaquina.some(r => r.inicio || r.termino)) return true;
   if (Array.isArray(m.componentesChecados) && m.componentesChecados.some(Boolean)) return true;
-  if (m.dataRecebimento || m.horaRecebimento || (m.quemRecebeu && m.quemRecebeu.trim())) return true;
+  if (m.dataRecebimento || m.horaRecebimento || (m.quemRecebeu && m.quemRecebeu.trim()) || (m.notaFiscal && m.notaFiscal.trim()) || (m.precoRecebido && m.precoRecebido.trim())) return true;
   return false;
 }
 
@@ -772,7 +777,7 @@ function renderRecebimento() {
   pendentes.forEach(o => {
     const btn = document.createElement("div");
     btn.className = "queue-item";
-    btn.innerHTML = `<div><div style="font-size:12px;font-weight:600;color:var(--ink);">${esc(o.parsed.fornecedor) || "—"}</div><strong style="font-size:16px;">${esc(o.parsed.itemEcolub || "Item")}</strong></div><div style="display:flex; align-items:center; gap:10px;"><div style="text-align:right;"><div class="qty mono" style="font-weight:700;">${esc(o.parsed.quantidade || "")}</div><div class="muted" style="font-size:11px;">${esc(o.parsed.dataPrevista) || ""}</div></div><span class="badge ${estadoVisual(o).cls}">${estadoVisual(o).label}</span></div>`;
+    btn.innerHTML = `<div><div style="font-size:17px;font-weight:800;color:var(--ink);">${esc(o.parsed.fornecedor) || "—"}</div><span style="font-size:12px;color:#8a8377;">${esc(o.parsed.itemEcolub || "Item")}</span></div><div style="display:flex; align-items:center; gap:10px;"><div style="text-align:right;"><div class="qty mono" style="font-weight:700;">${esc(o.parsed.quantidade || "")}</div><div class="muted" style="font-size:11px;">${esc(o.parsed.dataPrevista) || ""}</div></div><span class="badge ${estadoVisual(o).cls}">${estadoVisual(o).label}</span></div>`;
     btn.onclick = () => { openId = o.id; renderRecebimento(); };
     wrap.appendChild(btn);
   });

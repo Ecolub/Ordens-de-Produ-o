@@ -197,6 +197,11 @@ function extrairNumeroConcatenado(trecho) {
   return resultado || null;
 }
 function extrairHoraFalada(trecho) {
+  const direta = trecho.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
+  if (direta) {
+    const h = parseInt(direta[1], 10), m = parseInt(direta[2], 10);
+    if (h <= 23 && m <= 59) return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
   const palavras = trecho.replace(/horas?/g, "").split(/\s+/).filter(Boolean);
   for (let i = 0; i < palavras.length; i++) {
     const h = lerNumero(palavras, i);
@@ -324,7 +329,63 @@ function processarComandoVoz(textoOriginal) {
     return true;
   }
 
-  let m = t.match(/numero de funcionarios (.+)/);
+  if (/apagar observaco/.test(t)) {
+    draft.observacoes = "";
+    salvarDraftAtual();
+    renderProducao();
+    tocarBipConfirmacao();
+    return true;
+  }
+
+  let m = t.match(/numero (.+?) (desmarcar|apagar)/);
+  if (m) {
+    const num = extrairPrimeiroNumero(m[1]);
+    if (num !== null && draft.componentesChecados && num >= 1 && num <= draft.componentesChecados.length) {
+      draft.componentesChecados[num - 1] = false;
+      salvarDraftAtual();
+      renderProducao();
+      tocarBipConfirmacao();
+      return true;
+    }
+    return false;
+  }
+
+  m = t.match(/apagar\s+\bh?ora\b.*?\b(homem|maquina)\b.*?\b(inici\w*|termin\w*)\b\s*(.+)/);
+  if (m) {
+    const grupo = m[1] === "homem" ? "horaHomem" : "horaMaquina";
+    const campo = /^inici/.test(m[2]) ? "inicio" : "termino";
+    const num = extrairPrimeiroNumero(m[3]);
+    if (num !== null && draft[grupo] && draft[grupo][num - 1]) {
+      draft[grupo][num - 1][campo] = "";
+      salvarDraftAtual();
+      renderProducao();
+      tocarBipConfirmacao();
+      return true;
+    }
+    return false;
+  }
+
+  m = t.match(/apagar\s+data\s*(?:de )?(inici\w*|termin\w*|fim)/);
+  if (m) {
+    const campo = /^inici/.test(m[1]) ? "dataInicio" : "dataTermino";
+    draft[campo] = "";
+    salvarDraftAtual();
+    renderProducao();
+    tocarBipConfirmacao();
+    return true;
+  }
+
+  m = t.match(/apagar\s+\bh?ora\b\s*(?:de )?(inici\w*|termin\w*)/);
+  if (m) {
+    const campo = /^inici/.test(m[1]) ? "horaInicio" : "horaTermino";
+    draft[campo] = "";
+    salvarDraftAtual();
+    renderProducao();
+    tocarBipConfirmacao();
+    return true;
+  }
+
+  m = t.match(/numero de funcionarios (.+)/);
   if (m) {
     const num = extrairPrimeiroNumero(m[1]);
     if (num !== null) {
@@ -442,20 +503,11 @@ function iniciarReconhecimentoVoz() {
   };
   try { reconhecimentoVoz.start(); } catch (e) {}
   vozUltimoEvento = Date.now();
-  clearInterval(vozWatchdog);
-  vozWatchdog = setInterval(() => {
-    if (vozAtiva && Date.now() - vozUltimoEvento > 12000) {
-      vozUltimoEvento = Date.now();
-      try { reconhecimentoVoz.stop(); } catch (e) {}
-      setTimeout(() => { if (vozAtiva) { try { reconhecimentoVoz.start(); } catch (e) {} } }, 500);
-    }
-  }, 5000);
 }
 function pararReconhecimentoVoz() {
   vozAtiva = false;
   modoDitado = false;
   clearTimeout(bufferVozTimer);
-  clearInterval(vozWatchdog);
   bufferFala = "";
   if (reconhecimentoVoz) { try { reconhecimentoVoz.stop(); } catch (e) {} }
 }

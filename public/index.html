@@ -78,6 +78,7 @@
   .voz-btn.voz-ligada { background: #B23A2E; animation: piscarBanner 1.4s infinite; }
   .voz-debug { font-size: 12px; color: var(--teal); background: #EAF3F1; border-radius: 6px; padding: 6px 10px; margin: -6px 0 14px; min-height: 16px; }
   .nova-ordem-banner { position: fixed; top: 0; left: 0; right: 0; background: var(--amber); color: #fff; text-align: center; padding: 16px; font-weight: 800; font-size: 16px; z-index: 999; box-shadow: 0 2px 10px rgba(0,0,0,.25); animation: piscarBanner 1s infinite; cursor: pointer; }
+  .versao-app { position: fixed; bottom: 4px; right: 8px; font-size: 10px; color: #999; background: rgba(255,255,255,.85); padding: 2px 8px; border-radius: 6px; z-index: 998; }
   @keyframes piscarBanner { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 </style>
 </head>
@@ -95,6 +96,7 @@
 </header>
 <main id="app"></main>
 <div id="novaOrdemBanner" class="nova-ordem-banner" style="display:none;">🔔 Nova Ordem de Produção</div>
+<div class="versao-app">v2026-09-12-18:45</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
@@ -467,7 +469,7 @@ function iniciarReconhecimentoVoz() {
   reconhecimentoVoz = new SR();
   reconhecimentoVoz.lang = "pt-BR";
   reconhecimentoVoz.continuous = true;
-  reconhecimentoVoz.interimResults = true;
+  reconhecimentoVoz.interimResults = false;
   reconhecimentoVoz.onstart = () => { vozUltimoEvento = Date.now(); };
   reconhecimentoVoz.onspeechstart = () => { vozUltimoEvento = Date.now(); };
   reconhecimentoVoz.onresult = (event) => {

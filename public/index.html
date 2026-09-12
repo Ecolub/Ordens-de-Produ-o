@@ -467,7 +467,7 @@ function iniciarReconhecimentoVoz() {
   reconhecimentoVoz = new SR();
   reconhecimentoVoz.lang = "pt-BR";
   reconhecimentoVoz.continuous = true;
-  reconhecimentoVoz.interimResults = false;
+  reconhecimentoVoz.interimResults = true;
   reconhecimentoVoz.onstart = () => { vozUltimoEvento = Date.now(); };
   reconhecimentoVoz.onspeechstart = () => { vozUltimoEvento = Date.now(); };
   reconhecimentoVoz.onresult = (event) => {
@@ -499,7 +499,7 @@ function iniciarReconhecimentoVoz() {
   };
   reconhecimentoVoz.onerror = () => { vozUltimoEvento = Date.now(); };
   reconhecimentoVoz.onend = () => {
-    if (vozAtiva) setTimeout(() => { try { reconhecimentoVoz.start(); } catch (e) {} }, 300);
+    if (vozAtiva) { try { reconhecimentoVoz.start(); } catch (e) {} }
   };
   try { reconhecimentoVoz.start(); } catch (e) {}
   vozUltimoEvento = Date.now();

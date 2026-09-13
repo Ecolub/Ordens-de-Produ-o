@@ -96,7 +96,7 @@
 </header>
 <main id="app"></main>
 <div id="novaOrdemBanner" class="nova-ordem-banner" style="display:none;">🔔 Nova Ordem de Produção</div>
-<div class="versao-app">v2026-09-12-18:45</div>
+<div class="versao-app">v2026-09-12-19:35</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
@@ -160,7 +160,7 @@ function normalizarFala(txt) {
   return txt.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.,!?]/g, "").trim();
 }
 const NUM_PALAVRAS = {
-  "zero": 0, "um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "quatro": 4, "cinco": 5, "seis": 6, "sete": 7,
+  "zero": 0, "um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "quatro": 4, "cinco": 5, "seis": 6, "meia": 6, "sete": 7,
   "oito": 8, "nove": 9, "dez": 10, "onze": 11, "doze": 12, "treze": 13, "quatorze": 14, "catorze": 14, "quinze": 15,
   "dezesseis": 16, "dezessete": 17, "dezoito": 18, "dezenove": 19, "vinte": 20, "trinta": 30, "quarenta": 40, "cinquenta": 50
 };
@@ -209,10 +209,10 @@ function extrairHoraFalada(trecho) {
     const h = lerNumero(palavras, i);
     if (h && h.valor >= 0 && h.valor <= 23) {
       let minuto = 0;
-      if (palavras[h.fim] === "e") {
-        const m = lerNumero(palavras, h.fim + 1);
-        if (m) minuto = m.valor;
-      }
+      let posMin = h.fim;
+      if (palavras[posMin] === "e") posMin++;
+      const m = lerNumero(palavras, posMin);
+      if (m && m.valor <= 59) minuto = m.valor;
       return `${String(h.valor).padStart(2, "0")}:${String(minuto).padStart(2, "0")}`;
     }
   }
@@ -286,7 +286,7 @@ function processarComandoVoz(textoOriginal) {
   const t = normalizarFala(textoOriginal);
 
   if (openId === null) {
-    const m = t.match(/abrir ordem (.+)/);
+    const m = t.match(/abrir\s+(?:ordem\s+)?(.+)/);
     if (m) {
       const numFalado = extrairNumeroConcatenado(m[1]);
       if (numFalado) {
@@ -320,8 +320,13 @@ function processarComandoVoz(textoOriginal) {
     return true;
   }
 
-  if (/concluir ordem/.test(t)) {
+  if (/(concluir|finalizar)(\s+a)?\s+ordem/.test(t)) {
     const btn = document.getElementById("doneBtn");
+    if (btn) { tocarBipConfirmacao(); btn.click(); return true; }
+  }
+
+  if (/voltar\s+(para|pra)\s+a?\s*fila/.test(t)) {
+    const btn = document.getElementById("backBtn");
     if (btn) { tocarBipConfirmacao(); btn.click(); return true; }
   }
 
@@ -333,6 +338,26 @@ function processarComandoVoz(textoOriginal) {
 
   if (/apagar observaco/.test(t)) {
     draft.observacoes = "";
+    salvarDraftAtual();
+    renderProducao();
+    tocarBipConfirmacao();
+    return true;
+  }
+
+  if (/apagar\s+(todas|toda|tudo)/.test(t)) {
+    draft.dataInicio = ""; draft.horaInicio = ""; draft.dataTermino = ""; draft.horaTermino = "";
+    draft.numFuncionarios = ""; draft.observacoes = "";
+    if (Array.isArray(draft.horaHomem)) draft.horaHomem.forEach(r => { r.inicio = ""; r.termino = ""; });
+    if (Array.isArray(draft.horaMaquina)) draft.horaMaquina.forEach(r => { r.inicio = ""; r.termino = ""; });
+    if (Array.isArray(draft.componentesChecados)) draft.componentesChecados = draft.componentesChecados.map(() => false);
+    salvarDraftAtual();
+    renderProducao();
+    tocarBipConfirmacao();
+    return true;
+  }
+
+  if (/numero de funcionarios\s+(apagar|limpar|zerar)/.test(t)) {
+    draft.numFuncionarios = "";
     salvarDraftAtual();
     renderProducao();
     tocarBipConfirmacao();

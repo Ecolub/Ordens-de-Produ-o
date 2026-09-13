@@ -96,7 +96,7 @@
 </header>
 <main id="app"></main>
 <div id="novaOrdemBanner" class="nova-ordem-banner" style="display:none;">🔔 Nova Ordem de Produção</div>
-<div class="versao-app">v2026-09-12-19:35</div>
+<div class="versao-app">versão 1.8</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
@@ -202,6 +202,13 @@ function extrairHoraFalada(trecho) {
   const direta = trecho.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
   if (direta) {
     const h = parseInt(direta[1], 10), m = parseInt(direta[2], 10);
+    if (h <= 23 && m <= 59) return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+  const colada = trecho.match(/\b(\d{3,4})\b/);
+  if (colada) {
+    const digitos = colada[1];
+    const h = parseInt(digitos.slice(0, -2), 10);
+    const m = parseInt(digitos.slice(-2), 10);
     if (h <= 23 && m <= 59) return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   }
   const palavras = trecho.replace(/horas?/g, "").split(/\s+/).filter(Boolean);
@@ -356,7 +363,15 @@ function processarComandoVoz(textoOriginal) {
     return true;
   }
 
-  if (/numero de funcionarios\s+(apagar|limpar|zerar)/.test(t)) {
+  if (/apagar.*materi|apagar.*prima/.test(t)) {
+    if (Array.isArray(draft.componentesChecados)) draft.componentesChecados = draft.componentesChecados.map(() => false);
+    salvarDraftAtual();
+    renderProducao();
+    tocarBipConfirmacao();
+    return true;
+  }
+
+  if (/apagar.*funcionarios|funcionarios.*(apagar|limpar|zerar)/.test(t)) {
     draft.numFuncionarios = "";
     salvarDraftAtual();
     renderProducao();
